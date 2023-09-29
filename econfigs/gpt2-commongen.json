@@ -1,0 +1,29 @@
+{
+  "common": {
+    "tboard-path": "tboard-runs/gpt2-commongen",
+    "checkpoint-path": "checkpoints/gpt2-commongen",
+    "save-checkpoint": true,
+    "num-epochs": 200,
+    "device": "cpu",
+    "num-workers": 2,
+    "early-stop-patience": 3
+  },
+  "datasets": ["gpt2_commongen"],
+  "grid": {
+    "common": {
+      "num-components": [32, 64, 128, 256, 512, 1024],
+      "optimizer": "Adam",
+      "region-graph": "linear-vtree",
+      "batch-size": 4096,
+      "verbose": true,
+      "init-scale": 1.0,
+      "dtype": "float32"
+    },
+    "models": {
+      "gpt2_commongen": {
+        "MonotonicPC": { "init-method": ["log-normal", "uniform", "dirichlet"], "learning-rate": [5e-3, 1e-2, 5e-2] },
+        "BornPC": { "init-method": ["normal", "positive-skewed-normal", "uniform"], "learning-rate": [5e-3, 1e-2, 5e-2] }
+      }
+    }
+  }
+}

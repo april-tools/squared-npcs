@@ -1,0 +1,92 @@
+{
+  "common": {
+    "tboard-path": "tboard-runs/uci-data",
+    "checkpoint-path": "checkpoints/uci-data",
+    "save-checkpoint": true,
+    "num-epochs": 1200,
+    "device": "cuda",
+    "num-workers": 2,
+    "patience-threshold": 1e-3,
+    "early-stop-patience": 25
+  },
+  "datasets": ["power", "gas", "hepmass", "miniboone", "bsds300"],
+  "grid": {
+    "common": {
+      "region-graph": "random",
+      "depth": -1,
+      "splines": [false, true],
+      "spline-order": 2,
+      "optimizer": "Adam",
+      "verbose": true,
+      "init-scale": 1.0,
+      "num-replicas": 8,
+      "learning-rate": [0.005, 0.01],
+      "batch-size": [512, 1024, 2048]
+    },
+    "models": {
+      "power|hepmass|miniboone": {
+        "MonotonicPC": {
+          "init-method": "uniform",
+          "spline-knots": 512,
+          "num-components": [16, 32, 64, 128, 256, 512]
+        },
+        "BornPC": {
+          "non-monotonic": {
+            "init-method": "uniform",
+            "exp-reparam": false,
+            "spline-knots": 512,
+            "num-components": [16, 32, 64, 128, 256, 512]
+          },
+          "monotonic": {
+            "init-method": "uniform",
+            "exp-reparam": true,
+            "spline-knots": 512,
+            "num-components": [16, 32, 64, 128, 256, 512]
+          }
+        }
+      },
+      "gas": {
+        "MonotonicPC": {
+          "init-method": "uniform",
+          "spline-knots": 512,
+          "num-components": [16, 32, 64, 128, 256, 512, 1024]
+        },
+        "BornPC": {
+          "non-monotonic": {
+            "init-method": "uniform",
+            "exp-reparam": false,
+            "spline-knots": 512,
+            "num-components": [16, 32, 64, 128, 256, 512, 1024]
+          },
+          "monotonic": {
+            "init-method": "uniform",
+            "exp-reparam": true,
+            "spline-knots": 512,
+            "num-components": [16, 32, 64, 128, 256, 512, 1024]
+          }
+        }
+      },
+      "bsds300": {
+        "MonotonicPC": {
+          "init-method": "uniform",
+          "spline-knots": 512,
+          "num-components": [16, 32, 64, 128, 256]
+        },
+        "BornPC": {
+          "non-monotonic": {
+            "init-method": "uniform",
+            "exp-reparam": false,
+            "spline-knots": 512,
+            "num-components": [16, 32, 64, 128, 256]
+          },
+          "monotonic": {
+            "init-method": "uniform",
+            "exp-reparam": true,
+            "spline-knots": 512,
+            "num-components": [16, 32, 64, 128, 256]
+          }
+        }
+      }
+    }
+  }
+}

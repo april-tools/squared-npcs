@@ -1,0 +1,51 @@
+{
+  "common": {
+    "tboard-path": "tboard-runs/image-binomials",
+    "checkpoint-path": "checkpoints/image-binomials",
+    "save-checkpoint": false,
+    "num-epochs": 250,
+    "device": "cpu",
+    "num-workers": 2,
+    "patience-threshold": 1e-3,
+    "early-stop-patience": 3
+  },
+  "datasets": [
+    "MNIST"
+  ],
+  "grid": {
+    "common": {
+      "num-components": [
+        64,
+        128,
+        256
+      ],
+      "optimizer": "Adam",
+      "compute-layer": "cp",
+      "batch-size": 256,
+      "binomials": true,
+      "verbose": true,
+      "init-scale": 1.0,
+      "learning-rate": [
+        5e-3,
+        1e-2,
+        5e-2
+      ],
+      "region-graph": "quad-tree",
+      "input-mixture": true,
+      "dtype": "float32"
+    },
+    "models": {
+      "MNIST": {
+        "MonotonicPC": {
+          "init-method": "uniform"
+        },
+        "BornPC": {
+          "non-monotonic": {
+            "init-method": "uniform",
+            "exp-reparam": false
+          }
+        }
+      }
+    }
+  }
+}

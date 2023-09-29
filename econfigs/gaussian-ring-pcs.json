@@ -1,0 +1,28 @@
+{
+  "common": {
+    "tboard-path": "tboard-runs/gaussian-ring",
+    "checkpoint-path": "checkpoints/gaussian-ring",
+    "save-checkpoint": true,
+    "num-epochs": 1200,
+    "device": "cpu",
+    "num-workers": 0,
+    "early-stop-patience": 100
+  },
+  "datasets": ["ring"],
+  "grid": {
+    "common": {
+      "optimizer": "Adam",
+      "batch-size": 64,
+      "learning-rate": 5e-3,
+      "verbose": true,
+      "standardize": true,
+      "init-scale": 1.0
+    },
+    "models": {
+      "ring": {
+        "MonotonicPC": { "num-components": [2, 16], "init-method": "normal" },
+        "BornPC": { "num-components": 2, "init-method": "normal" }
+      }
+    }
+  }
+}

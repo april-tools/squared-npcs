@@ -1,0 +1,45 @@
+{
+  "common": {
+    "tboard-path": "tboard-runs/artificial-continuous",
+    "checkpoint-path": "checkpoints/artificial-continuous",
+    "save-checkpoint": true,
+    "num-epochs": 1200,
+    "device": "cpu",
+    "num-workers": 2,
+    "patience-threshold": 1e-3,
+    "early-stop-patience": 50
+  },
+  "datasets": ["mring", "cosine", "funnel", "banana"],
+  "grid": {
+    "common": {
+      "num-components": [4, 8, 12],
+      "optimizer": "Adam",
+      "compute-layer": "cp",
+      "batch-size": 256,
+      "splines": true,
+      "spline-order": 2,
+      "spline-knots": 32,
+      "verbose": true,
+      "standardize": true,
+      "init-scale": 1.0,
+      "learning-rate": 1e-3
+    },
+    "models": {
+      "banana|cosine|mring|funnel": {
+        "MonotonicPC": {
+          "init-method": "uniform"
+        },
+        "BornPC": {
+          "non-monotonic": {
+            "init-method": "uniform",
+            "exp-reparam": false
+          },
+          "monotonic": {
+            "init-method": "uniform",
+            "exp-reparam": true
+          }
+        }
+      }
+    }
+  }
+}

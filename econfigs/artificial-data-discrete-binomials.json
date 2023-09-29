@@ -1,0 +1,45 @@
+{
+  "common": {
+    "tboard-path": "tboard-runs/artificial-discrete-binomials",
+    "checkpoint-path": "checkpoints/artificial-discrete-binomials",
+    "save-checkpoint": true,
+    "num-epochs": 1200,
+    "device": "cpu",
+    "num-workers": 2,
+    "patience-threshold": 1e-3,
+    "early-stop-patience": 50
+  },
+  "datasets": ["mring", "banana", "funnel", "cosine"],
+  "grid": {
+    "common": {
+      "num-components": [32, 64, 96],
+      "optimizer": "Adam",
+      "compute-layer": "cp",
+      "batch-size": 256,
+      "binomials": true,
+      "verbose": true,
+      "standardize": true,
+      "init-scale": 1.0,
+      "learning-rate": 1e-3,
+      "discretize": true,
+      "discretize-bins": 32
+    },
+    "models": {
+      "banana|cosine|mring|funnel": {
+        "MonotonicPC": {
+          "init-method": "uniform"
+        },
+        "BornPC": {
+          "non-monotonic": {
+            "init-method": "uniform",
+            "exp-reparam": false
+          },
+          "monotonic": {
+            "init-method": "uniform",
+            "exp-reparam": true
+          }
+        }
+      }
+    }
+  }
+}
