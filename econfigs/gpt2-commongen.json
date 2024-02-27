@@ -16,13 +16,12 @@
       "region-graph": "linear-vtree",
       "batch-size": 4096,
       "verbose": true,
-      "init-scale": 1.0,
       "dtype": "float32"
     },
     "models": {
       "gpt2_commongen": {
-        "MonotonicPC": { "init-method": ["log-normal", "uniform", "dirichlet"], "learning-rate": [5e-3, 1e-2, 5e-2] },
-        "BornPC": { "init-method": ["normal", "positive-skewed-normal", "uniform"], "learning-rate": [5e-3, 1e-2, 5e-2] }
+        "MonotonicPC": { "init-method": ["log-normal", "uniform", "dirichlet"], "learning-rate": [5e-3, 1e-2, 5e-2], "init-scale": 1.0},
+        "BornPC": { "init-method": ["normal", "positive-skewed-normal", "uniform"], "learning-rate": [5e-3, 1e-2, 5e-2], "init-scale": 1e-1}
       }
     }
   }

@@ -13,15 +13,14 @@
     "common": {
       "optimizer": "Adam",
       "batch-size": 64,
-      "learning-rate": 5e-3,
       "verbose": true,
       "standardize": true,
       "init-scale": 1.0
     },
     "models": {
       "ring": {
-        "MonotonicPC": { "num-components": [2, 16], "init-method": "normal" },
-        "BornPC": { "num-components": 2, "init-method": "normal" }
+        "MonotonicPC": { "num-components": [2, 16], "init-method": "uniform", "learning-rate": 5e-3 },
+        "BornPC": { "num-components": 2, "init-method": "normal", "learning-rate": 1e-3 }
       }
     }
   }
