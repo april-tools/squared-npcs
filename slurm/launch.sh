@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export PROJECT_NAME="squared-circuits"
+export PROJECT_NAME="squared-npcs"
 export PYTHONPATH=${PYTHONPATH:-src}
 
 # These flags need to be updated accordingly:
