@@ -32,7 +32,7 @@ Power, Gas, Hepmass, MiniBoone and also BSDS300, can be downloaded from [zenodo]
 
 #### Sentences sampled from GPT2
 
-The sentences sampled from GPT2 four our experiments on model distillation can be downloaded from [here](https://github.com/anon-npc/squared-npcs/releases/download/v0.1/gpt2_commongen.zip).
+The sentences sampled from GPT2 four our experiments on model distillation can be downloaded from [here](https://github.com/april-tools/squared-npcs/releases/download/v0.1/gpt2_commongen.zip).
 After downloading it, you need to decompress it in the ```./datasets/language/gpt2_commongen``` directory.
 
 ### Run the same hyperparameters grid searches
