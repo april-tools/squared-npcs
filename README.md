@@ -1,7 +1,22 @@
-# Squared Non-monotonic Probabilistic Circuits
+# Subtractive Mixture Models via Squaring: Representation and Learning
 
-This repository contains the official implementation of _squared non-monotonic PCs_,
-as well as relevant information to reproduce the experiments of our paper "Subtractive Mixture Models via Squaring: Representation and Learning".
+This repository contains the code for reproducing the experiments of the paper
+_"Subtractive Mixture Models via Squaring: Representation and Learning"_, which has been accepted at ICLR 2024.
+
+We show how to effectively represent and learn a generic class of (deep) mixture models encoding subtractions of
+probability distributions, called _squared non-monotonic PCs_ (NPC<sup>2</sup>s), and theoretically prove they can be
+exponentially more expressive than addition-only mixture models.
+
+## Project Structure
+
+The repository is structured as follows.
+The file ```requirements.txt``` contains all the required Python dependencies, which can be installed by ```pip```.
+The directory ```src``` contains all the code, including utility scripts to run experiments and reproduce the plots of
+the papers starting from tensorboard log files (see below). In ```src/tests``` we store sanity checks that can be run
+by executing ```pytest``` at the root level.
+The directory ```econfigs``` contains the configuration files for all the experiments, which consist of selections of
+models, datasets and all the relevant hyperparameters.  The directory ```slurm``` contains utility script to execute
+batches of experiments (e.g., grid  searches) on a Slurm cluster.
 
 ## How to Run Experiments?
 
@@ -13,8 +28,7 @@ which is the default one.
 #### UCI Datasets
 
 The continuous UCI data sets that are commonly used in the _normalizing flow_ literature, i.e.,
-Power, Gas, Hepmass, MiniBoone and also BSDS300,
-can be downloaded from [zenodo](https://zenodo.org/record/1161203#.Wmtf_XVl8eN).
+Power, Gas, Hepmass, MiniBoone and also BSDS300, can be downloaded from [zenodo](https://zenodo.org/record/1161203#.Wmtf_XVl8eN).
 
 #### Sentences sampled from GPT2
 
@@ -71,7 +85,7 @@ with a path that will contain the model's weights in the ```.pt``` PyTorch forma
 
 In the checkpoints path it will be also saved additional information, e.g.,
 the (quantized) probability density/mass functions estimated by the models on the
-artificial continuous/discrete 2D data sets (with the name ```pdf.npy``` or ```pmf.npy```). 
+artificial continuous/discrete 2D data sets. 
 
 ### Run a Grid of Experiments
 
