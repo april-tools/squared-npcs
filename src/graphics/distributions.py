@@ -2,6 +2,7 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 import torch
+from torch.utils.data import DataLoader, TensorDataset
 from sklearn.neighbors import KernelDensity
 from matplotlib import pyplot as plt
 
@@ -16,7 +17,7 @@ def plot_bivariate_samples_hmap(
         xlim: Optional[Tuple[float, float]] = None,
         ylim: Optional[Tuple[float, float]] = None,
         zm: float = 0.0,
-        nbins: int = 600
+        nbins: int = 256
 ) -> np.ndarray:
     setup_tueplots(1, 1, hw_ratio=1.0)
     if xlim is None:
@@ -86,7 +87,7 @@ def kde_samples_hmap(
         xlim: Optional[Tuple[float, float]] = None,
         ylim: Optional[Tuple[float, float]] = None,
         zm: float = 0.0,
-        nbins: int = 600,
+        nbins: int = 256,
         *,
         bandwidth: float = 0.2
 ) -> np.ndarray:
@@ -113,23 +114,47 @@ def bivariate_pdf_heatmap(
         xlim: Tuple[float, float],
         ylim: Tuple[float, float],
         zm: float = 0.0,
-        nbins: int = 600,
-        device: Optional[Union[str, torch.device]] = None
+        nbins: int = 256,
+        batch_size: Optional[int] = None,
+        variables: Optional[Tuple[int, int]] = None,
+        device: Optional[Union[str, torch.device]] = None,
 ) -> np.ndarray:
+    if device is None:
+        device = 'cpu'
     zm_xamount = np.abs(xlim[1] - xlim[0])
     zm_yamount = np.abs(ylim[1] - ylim[0])
     xlim = (xlim[0] - zm * zm_xamount), (xlim[1] + zm * zm_xamount)
     ylim = (ylim[0] - zm * zm_yamount), (ylim[1] + zm * zm_yamount)
     xi, yi = np.mgrid[xlim[0]:xlim[1]:nbins * 1j, ylim[0]:ylim[1]:nbins * 1j]
-    xy = np.stack([xi.flatten(), yi.flatten()], axis=1)\
+    xy = np.stack([xi.flatten(), yi.flatten()], axis=1) \
         .astype(retrieve_default_dtype(numpy=True), copy=False)
-    if device is None:
-        device = 'cpu'
-    xy = torch.from_numpy(xy).to(device)
-    if isinstance(model, PC):
-        zi = model.log_prob(xy)
+    if model.num_variables < 1:
+        raise ValueError("A PC defined over two variables is required")
+    elif model.num_variables == 2:
+        xy = torch.from_numpy(xy).to(device)
+        if isinstance(model, PC):
+            zi = model.log_prob(xy)
+        else:
+            zi = model().log_prob(xy)
     else:
-        zi = model().log_prob(xy)
+        if batch_size is None:
+            batch_size = 128
+        if variables is None or len(variables) != 2:
+            raise ValueError("The two variables to show the PDF of cannot be None")
+        # Perform variable marginalization
+        points = TensorDataset(xy[0], xy[1])
+        points = DataLoader(points, batch_size=batch_size, shuffle=False, drop_last=False)
+        mar_mask = torch.ones(1, model.num_variables, dtype=torch.bool, device=device)
+        mar_mask[:, variables] = False
+        zi = list()
+        for xf, yf in points:
+            samples = torch.zeros(size=(xf.shape[0], model.num_variables), dtype=xf.dtype)
+            samples[:, variables[0]] = xf
+            samples[:, variables[1]] = yf
+            samples.to(device)
+            log_probs = model.log_marginal_prob(samples, mar_mask)
+            zi.append(log_probs)
+        zi = torch.concatenate(zi, dim=0)
     zi = torch.exp(zi).cpu().numpy().reshape(xi.shape)
     return zi
 

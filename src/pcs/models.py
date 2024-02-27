@@ -443,7 +443,6 @@ class BornPC(TensorizedPC):
 
     def log_score(self, x: torch.Tensor) -> torch.Tensor:
         (x, x_si), ldj = self._eval_input(x)
-
         return self._eval_layers(x, x_si) + ldj
 
     def log_marginal_score(

@@ -9,6 +9,7 @@ import torch
 import numpy as np
 from matplotlib import rcParams
 from torch.utils.data import DataLoader, TensorDataset
+from torch import optim
 
 from graphics.utils import setup_tueplots
 from pcs.models import PC
@@ -50,6 +51,9 @@ parser.add_argument(
 )
 parser.add_argument(
     '--exp-bubble-radius', type=float, default=1.75, help="The exponent for computing the bubble sizes"
+)
+parser.add_argument(
+    '--eval-backprop', action='store_true', default=False, help="Whether to benchmark also backpropagation"
 )
 parser.add_argument(
     '--seed', type=int, default=42, help="The seed for reproducibility"
@@ -109,6 +113,10 @@ def benchmark_model(
 
 
 def run_benchmark(data_loader: DataLoader, model: PC, burnin_iterations: int = 1, eval_pf: bool = False) -> Tuple[float, float]:
+    if args.eval_backprop:
+        # Setup losses and a dummy optimizer (only used to free gradient tensors)
+        optimizer = optim.SGD(model.parameters(), lr=0.01)
+
     elapsed_times = list()
     gpu_memory_peaks = list()
     for batch_idx, batch in enumerate(data_loader):
@@ -130,10 +138,15 @@ def run_benchmark(data_loader: DataLoader, model: PC, burnin_iterations: int = 1
             lls = model.log_pf(return_input=False)
         else:
             lls = model.log_score(batch)
+        if args.eval_backprop:
+            loss = -lls.mean()
+            loss.backward(retain_graph=False)  # Free the autodiff graph
         end.record()
         torch.cuda.synchronize(device)     # Synchronize CUDA Kernels before measuring time
         #end_time = time.perf_counter()
         gpu_memory_peaks.append(from_bytes_to_gib(torch.cuda.max_memory_allocated(device)))
+        if args.eval_backprop:
+            optimizer.zero_grad()  # Free gradients tensors
         gc.enable()            # Enable GC again
         gc.collect()           # Manual GC
         #elapsed_times.append(end_time - start_time)
@@ -158,7 +171,8 @@ if __name__ == '__main__':
     # Set device and the seed
     device = torch.device(args.device)
     set_global_seed(args.seed)
-    torch.set_grad_enabled(False)
+    if not args.eval_backprop:
+        torch.set_grad_enabled(False)
 
     # Setup the data set
     metadata, (train_dataloader, valid_dataloader, test_dataloader) = setup_data_loaders(
@@ -167,7 +181,7 @@ if __name__ == '__main__':
     dataset = train_dataloader.dataset.tensors[0].numpy()
 
     nrows, ncols = 1, 2
-    setup_tueplots(nrows, ncols)
+    setup_tueplots(nrows, ncols, hw_ratio=0.5)
     fig, ax = plt.subplots(nrows, ncols, sharey=True)
     def _bubble_size(s, inverse=False):
         return bubble_size(
@@ -226,7 +240,7 @@ if __name__ == '__main__':
 
         print(f"Plotting results for {m}")
         #desc = format_model_name(m)
-        desc = r"$Z \ (\pm^2)$" if ss['eval_pf'] else r"$c(\mathbf{X}) \ (\pm)$"
+        desc = r"$Z = \int c^2(\mathbf{x})\mathrm{d}\mathbf{x}$" if ss['eval_pf'] else r"$c(\mathbf{x})$"
         bench_bs_results = list(filter(lambda t: np.isfinite(t[0]), bench_bs_results))
         bench_nc_results = list(filter(lambda t: np.isfinite(t[0]), bench_nc_results))
         print(bench_bs_results)
@@ -288,5 +302,7 @@ if __name__ == '__main__':
         handletextpad=1.0
     )
     os.makedirs(os.path.join('figures', 'benchmarks'), exist_ok=True)
-    plt.savefig(os.path.join('figures', 'benchmarks', f'benchmark-{args.dataset}.pdf'))
-
+    filename = f'benchmark-{args.dataset}'
+    if args.eval_backprop:
+        filename = f'{filename}-backprop'
+    plt.savefig(os.path.join('figures', 'benchmarks', f'{filename}.pdf'))

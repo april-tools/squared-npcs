@@ -31,12 +31,20 @@ def setup_tueplots(
     #})
 
 
-def array_to_image(array: np.ndarray, vmin: Optional[float] = None, vmax: Optional[float] = None) -> np.ndarray:
+def array_to_image(
+        array: np.ndarray,
+        vmin: Optional[float] = None,
+        vmax: Optional[float] = None,
+        colorbar: bool = False
+) -> np.ndarray:
     assert len(array.shape) == 2
     xi, yi = np.mgrid[range(array.shape[0]), range(array.shape[1])]
     setup_tueplots(1, 1, hw_ratio=1.0)
     fig, ax = plt.subplots()
-    ax.pcolormesh(xi, yi, array, shading='auto', vmin=vmin, vmax=vmax)
+    cmap = 'turbo' if colorbar else 'jet'
+    pcm = ax.pcolormesh(xi, yi, array, shading='auto', cmap=cmap, vmin=vmin, vmax=vmax)
+    if colorbar:
+        plt.colorbar(pcm)
     ax.set_xticks([])
     ax.set_yticks([])
     return matplotlib_buffer_to_image(fig)

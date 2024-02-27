@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser(
     description="PDFs plotter"
 )
 parser.add_argument('--checkpoint-path', default='checkpoints', type=str, help="The checkpoints path")
+parser.add_argument('--title', default=False, action='store_true', help="Whether to show a title")
 
 
 def ring_kde() -> np.ndarray:
@@ -41,14 +42,9 @@ def load_pdf(model: str, exp_id: str) -> np.ndarray:
     return np.load(filepath)
 
 
-def plot_pdf(pdf: np.ndarray, ax: plt.Axes, vmin: Optional[float] = None, vmax: Optional[float] = None, title: Optional[str] = None, color: str = 'k'):
+def plot_pdf(pdf: np.ndarray, ax: plt.Axes, vmin: Optional[float] = None, vmax: Optional[float] = None):
     xi, yi = np.mgrid[range(pdf.shape[0]), range(pdf.shape[1])]
     ax.pcolormesh(xi, yi, pdf, vmin=vmin, vmax=vmax)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_aspect(1.0)
-    if title is not None:
-        ax.set_title(title, rotation='vertical', x=-0.1, y=0.41, va='center', color=color)
 
 
 if __name__ == '__main__':
@@ -74,7 +70,7 @@ if __name__ == '__main__':
         for m, eid in zip(models[1:], exp_ids[1:])
     ]
     pdfs = [truth_pdf] + pdfs
-    vmax = np.max(pdfs)
+    vmax = np.max(truth_pdf)
     vmin = 0.0
 
     os.makedirs(os.path.join('figures', 'gaussian-ring'), exist_ok=True)
@@ -87,9 +83,22 @@ if __name__ == '__main__':
             else:
                 num_components = int(eid.split('_')[0][1:])
             title = f"{format_model_name(m, num_components)}"
-            color = 'k' if idx == len(models) - 1 else 'k'
         else:
             title = m
-            color = 'k'
-        plot_pdf(p, vmin=vmin, vmax=vmax, ax=ax, title=title, color=color)
-        plt.savefig(os.path.join('figures', 'gaussian-ring', f'pdfs-{idx}.png'), dpi=1200)
+
+        if idx == 0:
+            vmax = None
+            args.title = True
+
+        plot_pdf(p, vmin=vmin, vmax=vmax, ax=ax)
+
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_aspect(1.0)
+        if args.title:
+            ax.set_title(title, rotation='vertical', x=-0.1, y=0.41, va='center')
+
+        if idx == 0:
+            plt.savefig(os.path.join('figures', 'gaussian-ring', f'pdfs-gt.png'), dpi=1200)
+        else:
+            plt.savefig(os.path.join('figures', 'gaussian-ring', f'pdfs-{idx}.png'), dpi=1200)

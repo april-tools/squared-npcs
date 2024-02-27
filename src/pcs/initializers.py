@@ -16,7 +16,8 @@ INIT_METHODS = [
     'gamma',
     'dirichlet',
     'xavier-uniform',
-    'xavier-normal'
+    'xavier-normal',
+    'stiefel'
 ]
 
 
@@ -55,11 +56,16 @@ def init_params_(tensor: torch.Tensor, method: str = 'normal', init_loc: float =
         fan_in, fan_out = tensor.shape[-1], tensor.shape[-2]
         std = np.sqrt(2.0 / float(fan_in + fan_out))
         a = np.sqrt(3.0) * std
-        return nn.init.uniform_(tensor, -a, a)
+        nn.init.uniform_(tensor, -a, a)
     elif method == 'xavier-normal':
         fan_in, fan_out = tensor.shape[-1], tensor.shape[-2]
         std = np.sqrt(2.0 / float(fan_in + fan_out))
-        return nn.init.normal_(tensor, 0.0, std)
+        nn.init.normal_(tensor, 0.0, std)
+    elif method == 'stiefel':
+        assert tensor.shape[-2] <= tensor.shape[-1]
+        nn.init.normal_(tensor, init_loc, init_scale)
+        q, _ = torch.linalg.qr(tensor.transpose(-2, -1), mode='reduced')
+        tensor.copy_(q.transpose(-2, -1))
     else:
         raise NotImplementedError(f"Unknown initialization method called {method}")
 

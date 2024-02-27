@@ -84,8 +84,10 @@ class BornEmbeddings(BornInputLayer):
             num_states: int = 2,
             init_method: str = 'normal',
             init_scale: float = 1.0,
-            exp_reparam: bool = False
+            exp_reparam: bool = False,
+            l2norm: bool = False
     ):
+        assert not exp_reparam or not l2norm, "Only one between --exp-reparam and --l2norm can be set true"
         super().__init__(rg_nodes, num_components)
         self.num_states = num_states
         weight = torch.empty(self.num_variables, self.num_replicas, self.num_components, num_states)
@@ -94,10 +96,16 @@ class BornEmbeddings(BornInputLayer):
             weight = torch.log(weight)
         self.weight = nn.Parameter(weight, requires_grad=True)
         self.exp_reparam = exp_reparam
+        self.l2norm = l2norm
         self._ohe = num_states <= 256
 
     def log_pf(self) -> Tuple[torch.Tensor, torch.Tensor]:
-        weight = torch.exp(self.weight) if self.exp_reparam else self.weight
+        if self.exp_reparam:
+            weight = torch.exp(self.weight)
+        elif self.l2norm:
+            weight = self.weight / torch.linalg.vector_norm(self.weight, ord=2, dim=2, keepdim=True)
+        else:
+            weight = self.weight
 
         w_si = torch.sign(weight.detach())  # (num_variables, num_replicas, num_components, num_states)
         w = safelog(torch.abs(weight))      # (num_variables, num_replicas, num_components, num_states)
@@ -109,7 +117,12 @@ class BornEmbeddings(BornInputLayer):
         return z.unsqueeze(dim=0), z_si.unsqueeze(dim=0)
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        weight = torch.exp(self.weight) if self.exp_reparam else self.weight
+        if self.exp_reparam:
+            weight = torch.exp(self.weight)
+        elif self.l2norm:
+            weight = self.weight / torch.linalg.vector_norm(self.weight, ord=2, dim=2, keepdim=True)
+        else:
+            weight = self.weight
 
         # x: (-1, num_vars)
         # self.weight: (num_vars, num_comps, num_states)
@@ -121,7 +134,7 @@ class BornEmbeddings(BornInputLayer):
             w_si = torch.sign(w.detach())
             w = safelog(torch.abs(w))
         else:
-            weight = self.weight.permute(0, 3, 1, 2)
+            weight = weight.permute(0, 3, 1, 2)
             w = weight[torch.arange(weight.shape[0], device=x.device), x]
             w_si = torch.sign(w.detach())
             w = safelog(torch.abs(w))

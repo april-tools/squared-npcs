@@ -25,9 +25,9 @@ class ComputeLayer(nn.Module, abc.ABC):
 
 class MonotonicComputeLayer(ComputeLayer, abc.ABC):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        pass
+        raise NotImplementedError()
 
 
 class BornComputeLayer(ComputeLayer, abc.ABC):
     def forward(self, x: torch.Tensor, x_si: torch.Tensor, square: bool = False) -> Tuple[torch.Tensor, torch.Tensor]:
-        pass
+        raise NotImplementedError()

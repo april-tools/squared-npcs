@@ -25,7 +25,7 @@ from pcs.layers.mixture import MonotonicMixtureLayer, BornMixtureLayer
 from pcs.layers.tucker import MonotonicTucker2Layer, BornTucker2Layer
 from pcs.layers.candecomp import MonotonicCPLayer, BornCPLayer
 from pcs.models import PC, MonotonicPC, BornPC
-from graphics.distributions import plot_bivariate_samples_hmap, plot_bivariate_discrete_samples_hmap
+from graphics.distributions import plot_bivariate_samples_hmap, plot_bivariate_discrete_samples_hmap, kde_samples_hmap
 from region_graph import RegionGraph, RegionNode
 from region_graph.linear_vtree import LinearVTree
 from region_graph.quad_tree import QuadTree
@@ -164,21 +164,16 @@ def retrieve_tboard_runs(tboard_path: str, metrics: Union[str, List[str]], ignor
     # Throw out rows with no result for the metric
     for m in metrics:
         df_scalars = df_scalars[~pd.isna(df_scalars[m])]
-    
-    try:
-        n_diverged = np.sum(df_scalars['diverged'])
-        assert n_diverged == 0, "Some runs have diverged"
-        assert len(df_hparams) == len(df_scalars), "Number of runs and results is different"
-    except AssertionError as e:
-        if ignore_diverged:
-            print(f"Found {n_diverged} diverged runs. Ignoring...")
-            df_scalars = df_scalars[df_scalars['diverged'] == False]
-        else:
-            raise e
 
+    assert len(df_hparams) == len(df_scalars), "Number of runs and results is different"
+    if ignore_diverged:
+        n_diverged = int(np.sum(df_scalars['diverged']))
+        print(f"Found {n_diverged} diverged runs. Ignoring...")
+        df_scalars = df_scalars[df_scalars['diverged'] == False]
     df = df_hparams.merge(df_scalars, on='dir_name', sort=True).drop('dir_name', axis=1)
 
     return df
+
 
 def retrieve_tboard_df(tboard_path: str) -> pd.DataFrame:
     reader = SummaryReader(tboard_path, pivot=True, extra_columns={'dir_name'})
@@ -383,8 +378,7 @@ def setup_data_loaders(
             metadata['type'] = 'artificial'
             metadata['interval'] = (np.min(data_min), np.max(data_max))
             metadata['domains'] = [(data_min[i], data_max[i]) for i in range(len(data_min))]
-            metadata['hmap'] = plot_bivariate_samples_hmap(
-                train_data, xlim=metadata['domains'][0], ylim=metadata['domains'][1])
+            metadata['hmap'] = kde_samples_hmap(train_data, xlim=metadata['domains'][0], ylim=metadata['domains'][1])
     train_dataloader = DataLoader(train_data, batch_size, num_workers=num_workers, shuffle=True)
     valid_dataloader = DataLoader(valid_data, batch_size, num_workers=num_workers)
     test_dataloader = DataLoader(test_data, batch_size, num_workers=num_workers)
@@ -409,6 +403,7 @@ def setup_model(
         init_method: str = 'normal',
         init_scale: float = 1.0,
         dequantize: bool = False,
+        l2norm: bool = False,
         seed: int = 123
 ) -> Union[PC, Flow]:
     if binomials and splines:
@@ -483,13 +478,15 @@ def setup_model(
         in_mixture_layer_cls = BornMixtureLayer
     elif 'HMM' in model_name:
         model_cls = MonotonicHMM if 'Monotonic' in model_name else BornHMM
+        kwargs = dict() if 'Monotonic' in model_name else {'l2norm': l2norm}
         assert dataset_type == 'language'
         model = model_cls(
             vocab_size=interval[1] + 1,
             seq_length=num_variables,
             hidden_size=num_components,
             init_method=init_method,
-            init_scale=init_scale
+            init_scale=init_scale,
+            **kwargs
         )
         return model
     elif model_name == 'NICE':
@@ -563,6 +560,8 @@ def setup_model(
     if model_name == 'BornPC':
         if all(n not in input_layer_cls.__name__ for n in ['Normal', 'Binomial']):
             input_layer_kwargs['exp_reparam'] = exp_reparam
+        if 'Embeddings' in input_layer_cls.__name__:
+            input_layer_kwargs['l2norm'] = l2norm
         compute_layer_kwargs['exp_reparam'] = exp_reparam
     return model_cls(
         rg,

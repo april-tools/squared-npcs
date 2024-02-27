@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Dict, Any, Union, List
+from typing import Optional, Dict, Any, Union, List, Tuple
 
 import numpy as np
 import torch
@@ -7,6 +7,9 @@ import wandb
 from torch.utils.tensorboard import SummaryWriter
 
 from PIL import Image as pillow
+
+from graphics.distributions import bivariate_pmf_heatmap, bivariate_pdf_heatmap
+from pcs.models import PC
 
 
 class Logger:
@@ -29,6 +32,9 @@ class Logger:
             if wandb_kwargs is None:
                 wandb_kwargs = dict()
             self._setup_wandb(wandb_path, **wandb_kwargs)
+
+        self._logged_distributions = list()
+        self._logged_wcoords = list()
 
     @property
     def has_graphical_endpoint(self) -> bool:
@@ -99,7 +105,25 @@ class Logger:
         if wandb.run:
             wandb.run.summary.update(metric_dict)
 
+    def log_distribution(
+            self,
+            model: PC,
+            discretized: bool,
+            lim: Tuple[Tuple[Union[float, int], Union[float, int]], Tuple[Union[float, int], Union[float, int]]],
+            device: Optional[Union[str, torch.device]] = None
+    ):
+        xlim, ylim = lim
+        if discretized:
+            dist_hmap = bivariate_pmf_heatmap(model, xlim, ylim, device=device)
+        else:
+            dist_hmap = bivariate_pdf_heatmap(model, xlim, ylim, device=device)
+        self._logged_distributions.append(dist_hmap.astype(np.float32, copy=False))
+
     def close(self):
+        if self._logged_distributions:
+            self.save_array(np.stack(self._logged_distributions, axis=0), 'distribution.npy')
+        if self._logged_wcoords:
+            self.save_array(np.stack(self._logged_wcoords, axis=0), 'wcoords.npy')
         if self._tboard_writer is not None:
             self._tboard_writer.close()
         if wandb.run:
@@ -116,3 +140,12 @@ class Logger:
     def save_array(self, array: np.ndarray, filepath: str):
         if self.checkpoint_path:
             np.save(os.path.join(self.checkpoint_path, filepath), array)
+
+    def load_array(self, filepath: str) -> Optional[np.ndarray]:
+        if self.checkpoint_path:
+            try:
+                array = np.load(os.path.join(self.checkpoint_path, filepath))
+            except OSError:
+                return None
+            return array
+        return None

@@ -16,14 +16,12 @@ from pcs.initializers import INIT_METHODS
 from pcs.layers import COMPUTE_LAYERS
 from pcs.optimizers import OPTIMIZERS_NAMES, setup_optimizer
 from pcs.models import PCS_MODELS, PC, TensorizedPC
-from graphics.utils import array_to_image
 from region_graph import REGION_GRAPHS
 from pcs.utils import num_parameters
 from scripts.logger import Logger
 from scripts.utils import set_global_seed, evaluate_model_log_likelihood,\
     bits_per_dimension, perplexity, \
     build_run_id, setup_data_loaders, setup_model, setup_experiment_path, get_git_revision_hash
-from graphics.distributions import bivariate_pdf_heatmap, bivariate_pmf_heatmap
 
 
 class Engine:
@@ -43,12 +41,10 @@ class Engine:
         if args.exp_alias:
             run_group = f'{run_group}-{args.exp_alias}'
         exp_path = setup_experiment_path(args.dataset, args.model, args.exp_alias, run_id)
-        if args.save_checkpoint:
-            kwargs['checkpoint_path'] = os.path.join(args.checkpoint_path, exp_path)
-            os.makedirs(kwargs['checkpoint_path'], exist_ok=True)
-        if args.tboard_path:
-            kwargs['tboard_path'] = os.path.join(args.tboard_path, exp_path)
-            os.makedirs(kwargs['tboard_path'], exist_ok=True)
+        kwargs['checkpoint_path'] = os.path.join(args.checkpoint_path, exp_path)
+        os.makedirs(kwargs['checkpoint_path'], exist_ok=True)
+        kwargs['tboard_path'] = os.path.join(args.tboard_path, exp_path)
+        os.makedirs(kwargs['tboard_path'], exist_ok=True)
         if args.wandb_path:
             kwargs['wandb_path'] = args.wandb_path
             kwargs['wandb_kwargs'] = {
@@ -67,10 +63,11 @@ class Engine:
             'valid': None,
             'test': None
         }
-        
+
         self.model: Optional[Union[PC, Flow]] = None
         self.optimizer: Optional[torch.optim.Optimizer] = None
         self.scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None
+        self._log_distribution = self.args.log_distribution
 
     def shutdown(self):
         self.logger.close()
@@ -94,6 +91,7 @@ class Engine:
             'spline_order': self.args.spline_order,
             'spline_knots': self.args.spline_knots,
             'exp_reparam': self.args.exp_reparam,
+            'l2norm': self.args.l2norm,
             'optimizer': self.args.optimizer,
             'learning_rate': self.args.learning_rate,
             'batch_size': self.args.batch_size,
@@ -191,19 +189,6 @@ class Engine:
                 test_ppl = perplexity(test_avg_ll, self.metadata['num_variables'])
                 self.logger.info(f"[{self.args.dataset}] Epoch {epoch_idx}, Test ppl: {test_ppl:.03f}")
                 self.logger.log_scalar('Test/ppl', test_ppl, step=epoch_idx)
-
-            if self.metadata['type'] == 'artificial' or\
-                    (self.metadata['type'] == 'categorical' and self.metadata['num_variables'] == 2):
-                xlim, ylim = self.metadata['domains']
-                if self.args.heavy_logging:
-                    if self.args.discretize:
-                        pmf_hmap = bivariate_pmf_heatmap(self.model, xlim, ylim, device=self._device)
-                        self.logger.log_image(f'{self.args.model} PMF', array_to_image(pmf_hmap, vmin=0.0), step=epoch_idx)
-                        self.logger.save_array(pmf_hmap, 'pmf.npy')
-                    else:
-                        pdf_hmap = bivariate_pdf_heatmap(self.model, xlim, ylim, device=self._device)
-                        self.logger.log_image(f'{self.args.model} PDF', array_to_image(pdf_hmap, vmin=0.0), step=epoch_idx)
-                        self.logger.save_array(pdf_hmap, 'pdf.npy')
             metrics['best_valid_epoch'] = epoch_idx
             metrics['best_valid_avg_ll'] = valid_avg_ll
             metrics['best_valid_std_ll'] = valid_std_ll
@@ -258,6 +243,8 @@ class Engine:
         self.dataloaders['train'] = train_dataloader
         self.dataloaders['valid'] = valid_dataloader
         self.dataloaders['test'] = test_dataloader
+        self._log_distribution &= self.metadata['type'] == 'artificial' or \
+            (self.metadata['type'] == 'categorical' and self.metadata['num_variables'] == 2)
         self.logger.info(f"Number of variables: {self.metadata['num_variables']}")
 
         # Initialize the model
@@ -269,7 +256,7 @@ class Engine:
             exp_reparam=self.args.exp_reparam, binomials=self.args.binomials, splines=self.args.splines,
             spline_order=self.args.spline_order, spline_knots=self.args.spline_knots,
             init_method=self.args.init_method, init_scale=self.args.init_scale,
-            dequantize=self.args.dequantize, seed=self.args.seed
+            dequantize=self.args.dequantize, l2norm=self.args.l2norm, seed=self.args.seed
         )
 
         # Instantiate the optimizer
@@ -301,23 +288,22 @@ class Engine:
                 checkpoint_path = self.args.load_checkpoint_path
             else:
                 checkpoint_path = self.args.checkpoint_path
-            
+
             # If alternate checkpoint hparams given, replace values in hparams from CL
             checkpoint_args = copy(self.args)
             for hp in self.args.checkpoint_hparams.split(';'):
                 hp_name, hp_value = hp.split('=')
                 checkpoint_args.__setattr__(hp_name.replace('-', '_'), hp_value)
-            
+
             checkpoint_run_id = build_run_id(checkpoint_args)
             checkpoint_exp_path = setup_experiment_path(
                 checkpoint_args.dataset, checkpoint_args.model, checkpoint_args.exp_alias, checkpoint_run_id)
-            
+
             # Loading the model
             checkpoint_filepath = os.path.join(checkpoint_path, checkpoint_exp_path, 'model.pt')
-            state_dict = torch.load(checkpoint_filepath, map_location=self._device)
+            state_dict = torch.load(checkpoint_filepath, map_location='cpu')
             self.model.load_state_dict(state_dict['weights'])
             self.model.to(self._device)
-            del state_dict
             
             # TODO: figure out what this operation is doing
             if 'Born' in self.args.model and 'Monotonic' in checkpoint_args.model:
@@ -334,6 +320,7 @@ class Engine:
                             p.data.exp_()
             else:
                 self.optimizer.load_state_dict(state_dict['opt'])
+            del state_dict
 
             self.logger.info(f"Checkpoint loaded from {checkpoint_filepath}")
             metrics = self._eval_step(0, metrics)
@@ -368,13 +355,14 @@ class Engine:
                 gamma=self.args.amount_lr_decay, verbose=True
             )
 
-        if self.args.heavy_logging:
-            if self.metadata['type'] == 'artificial' or\
-                    (self.metadata['type'] == 'categorical' and self.metadata['num_variables'] == 2):
-                self.logger.log_image('Ground Truth', self.metadata['hmap'])
+        if self._log_distribution:
+            self.logger.save_array(self.metadata['hmap'], 'gt.npy')
+            self.logger.log_distribution(
+                self.model, self.args.discretize, lim=self.metadata['domains'], device=self._device)
 
         # The train loop
         diverged = False
+        opt_counter = 0
         for epoch_idx in range(1, self.args.num_epochs + 1):
             self.model.train()
             running_average_loss = 0.0
@@ -398,6 +386,14 @@ class Engine:
                     self.logger.info(f"[{self.args.dataset}] Loss is not finite")
                     diverged = True
                     break
+                if opt_counter % (
+                        max(1, int(1e-1 * self.args.log_frequency)) if epoch_idx == 1
+                        else (max(1, int(2e-1 * self.args.log_frequency)) if epoch_idx == 2
+                        else self.args.log_frequency)) == 0:
+                    if self._log_distribution:
+                        self.logger.log_distribution(
+                            self.model, self.args.discretize, lim=self.metadata['domains'], device=self._device)
+                opt_counter += 1
             if diverged:
                 self.logger.info(f"Diverged, exiting ...")
                 break

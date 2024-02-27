@@ -30,12 +30,13 @@ if __name__ == '__main__':
     fig, ax = plt.subplots(num_rows, num_cols)
 
     for i in range(y.shape[1]):
-        m = y[:, i] > 3e-4
+        m = y[:, i] > 7.5e-4
         ax.plot(x[m], y[m, i], linewidth=2, alpha=0.6)
 
-    w = 1.1 + torch.rand(y.shape[1], dtype=torch.float64)
+    #w = 1.1 + torch.rand(y.shape[1], dtype=torch.float64)
+    w = -0.2 + torch.randn(y.shape[1], dtype=torch.float64)
     z = torch.sum(y * w.unsqueeze(dim=0), dim=1)
-    ax.plot(x, z, c='k', linewidth=2)
+    ax.plot(x, z, c='k', alpha=0.7, linewidth=1.5)
     ax.set_xticks(np.unique(knots.astype(np.float32)))
     ax.margins(0.1)
 

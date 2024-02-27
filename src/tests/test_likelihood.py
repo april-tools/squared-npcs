@@ -22,6 +22,14 @@ from region_graph.random_binary_tree import RandomBinaryTree
 from tests.test_utils import generate_all_binary_samples, generate_all_ternary_samples
 
 
+def check_normalized_log_scores(model: PC, x: torch.Tensor) -> torch.Tensor:
+    scores = model.log_score(x)
+    assert scores.shape == (len(x), 1)
+    assert torch.all(torch.isfinite(scores))
+    assert torch.allclose(torch.logsumexp(scores, dim=0).exp(), torch.tensor(1.0), atol=1e-15)
+    return scores
+
+
 def check_evi_ll(model: PC, x: torch.Tensor) -> torch.Tensor:
     lls = model.log_prob(x)
     assert lls.shape == (len(x), 1)
@@ -95,6 +103,23 @@ def test_born_pc_random(compute_layer, num_variables, num_replicas, depth, num_c
         check_mar_ll_one(model, data, num_mar_variables=num_mar_variables)
 
 
+@pytest.mark.parametrize("compute_layer,num_variables,num_replicas,num_components",
+                         list(itertools.product(
+                             [BornCPLayer],
+                             [3, 8], [1, 4], [1, 2]
+                         )))
+def test_born_pc_linear_stiefel(compute_layer, num_variables, num_replicas, num_components):
+    rg = LinearVTree(num_variables, num_repetitions=num_replicas)
+    compute_layer_kwargs = {'init_method': 'stiefel'}
+    input_layer_kwargs = {'init_method': 'stiefel', 'num_states': 3}
+    model = BornPC(
+        rg, input_layer_cls=BornEmbeddings, compute_layer_cls=compute_layer,
+        input_layer_kwargs=input_layer_kwargs, compute_layer_kwargs=compute_layer_kwargs,
+        num_components=num_components)
+    data = torch.LongTensor(generate_all_ternary_samples(num_variables))
+    check_normalized_log_scores(model, data)
+
+
 @pytest.mark.parametrize("compute_layer,image_shape,num_components,input_mixture",
                          list(itertools.product(
                              [MonotonicCPLayer],
@@ -139,17 +164,17 @@ def test_monotonic_pc_pseudo_large_image(compute_layer, image_shape, num_compone
     assert lls.shape == (len(data), 1)
 
 
-@pytest.mark.parametrize("compute_layer,image_shape,num_components,input_mixture",
+@pytest.mark.parametrize("compute_layer,image_shape,num_components,input_mixture,l2norm",
                          list(itertools.product(
                              [BornCPLayer],
-                             [(1, 7, 7), (3, 28, 28)], [1, 3], [False, True]
+                             [(1, 7, 7), (3, 28, 28)], [1, 3], [False, True], [False, True]
                          )))
-def test_born_pc_pseudo_large_image(compute_layer, image_shape, num_components, input_mixture):
+def test_born_pc_pseudo_large_image(compute_layer, image_shape, num_components, input_mixture, l2norm):
     rg = QuadTree(image_shape, struct_decomp=True)
     model = BornPC(
         rg, input_layer_cls=BornEmbeddings, compute_layer_cls=compute_layer,
         input_mixture=input_mixture, num_components=num_components,
-        input_layer_kwargs={'num_states': 768})
+        input_layer_kwargs={'num_states': 768, 'l2norm': l2norm})
     data = torch.round(torch.rand((42, np.prod(image_shape)))).long()
     lls = model.log_prob(data)
     assert lls.shape == (len(data), 1)
@@ -339,9 +364,9 @@ def test_monotonic_hmm(seq_length, hidden_size):
     check_evi_ll(model, data)
 
 
-@pytest.mark.parametrize("seq_length,hidden_size",
-                         list(itertools.product([2, 7], [1, 13])))
-def test_born_hmm(seq_length, hidden_size):
-    model = BornHMM(vocab_size=3, seq_length=seq_length, hidden_size=hidden_size)
+@pytest.mark.parametrize("seq_length,hidden_size,l2norm",
+                         list(itertools.product([2, 7], [1, 13], [False, True])))
+def test_born_hmm(seq_length, hidden_size, l2norm):
+    model = BornHMM(vocab_size=3, seq_length=seq_length, hidden_size=hidden_size, l2norm=l2norm)
     data = torch.LongTensor(generate_all_ternary_samples(seq_length))
     check_evi_ll(model, data)

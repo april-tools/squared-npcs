@@ -21,8 +21,10 @@ parser.add_argument('--seed', default=123, type=int, help="Seed user for random 
 parser.add_argument('--device', default='cpu', type=str, help="The Torch device to use")
 parser.add_argument('--data-path', default='datasets', type=str, help="The data root path")
 parser.add_argument('--tboard-path', default='', type=str, help="The Tensorboard path, empty to disable")
-parser.add_argument('--disable-heavy-logging', dest='heavy_logging', action='store_false', default=True,
-                    help="Whether to disable heavy logging procedures")
+parser.add_argument('--log-distribution', action='store_true', default=False,
+                    help="Whether to log the learned distribution")
+parser.add_argument('--log-frequency', default=100,
+                    help="The frequency for logging distributions")
 parser.add_argument('--wandb-path', default='', type=str, help="The W&B path, empty to disable")
 parser.add_argument('--wandb-project', default='born-pcs', type=str, help="The W&B project")
 parser.add_argument('--wandb-sweeps', type=int, default=0, help="How many hyperparameters to sweep, 0 to disable")
@@ -64,6 +66,8 @@ parser.add_argument('--spline-lsq-noise', default=1e-1, type=float,
                     help="The amount of noise to apply relative to the least squares initialization method")
 parser.add_argument('--exp-reparam', action='store_true', default=False,
                     help="Whether to reparameterize the parameters of BornPCs via exponentiation")
+parser.add_argument('--l2norm', action='store_true', default=False,
+                    help="Wether to apply L2 norm to the parameters (valid only for HMMs)")
 parser.add_argument('--init-method', choices=INIT_METHODS, default=INIT_METHODS[0], help="Parameters initialisers")
 parser.add_argument('--init-scale', type=float, default=1.0, help="The initialization scale for the layers")
 parser.add_argument('--optimizer', choices=OPTIMIZERS_NAMES, default=OPTIMIZERS_NAMES[0], help="Optimiser to use")

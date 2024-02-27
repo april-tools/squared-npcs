@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 from typing import Tuple, Union, Optional
 
+import numpy as np
 import torch
 from torch import nn
 
@@ -95,12 +96,14 @@ class BornHMM(PC, abc.ABC):
             seq_length: int,
             hidden_size: int = 2,
             init_method: str = 'normal',
-            init_scale: float = 1.0
+            init_scale: float = 1.0,
+            l2norm: bool = False
     ):
         assert seq_length > 1
         super().__init__(num_variables=seq_length)
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
+        self.l2norm = l2norm
 
         latent_prior = torch.empty(self.hidden_size)
         init_params_(latent_prior, init_method, init_scale=init_scale)
@@ -119,17 +122,21 @@ class BornHMM(PC, abc.ABC):
         return None, log_pf
 
     def _latent_prior(self, x: torch.Tensor, x_si: torch.Tensor, square: bool = False) -> Tuple[torch.Tensor, torch.Tensor]:
+        w = self.latent_prior
+        if self.l2norm:
+            w = w / torch.linalg.vector_norm(w, ord=2, dim=0, keepdim=True)
+
         if square:
             # x: (batch_size, hidden_size, hidden_size)
             # self.latent_prior: (hidden_size,)
             m_x, _ = torch.max(x, dim=2, keepdim=True)  # (batch_size, hidden_size, 1)
             x = x_si * torch.exp(x - m_x)
-            x = torch.sum(self.latent_prior * x, dim=2)
+            x = torch.einsum('bij,j->bi', x, w)
             x_si = torch.sign(x.detach())
             x = m_x.squeeze(dim=2) + safelog(torch.abs(x))  # (batch_size, hidden_size)
             m_x, _ = torch.max(x, dim=1, keepdim=True)  # (batch_size, 1)
             x = x_si * torch.exp(x - m_x)
-            x = torch.sum(self.latent_prior * x, dim=1, keepdim=True)
+            x = torch.mm(x, w.unsqueeze(dim=1))
             x_si = torch.sign(x.detach())
             x = m_x + safelog(torch.abs(x))  # (batch_size, 1)
             return x, x_si
@@ -137,23 +144,27 @@ class BornHMM(PC, abc.ABC):
         # self.latent_prior: (hidden_size,)
         m_x, _ = torch.max(x, dim=1, keepdim=True)
         x = x_si * torch.exp(x - m_x)
-        y = torch.sum(self.latent_prior * x, dim=1, keepdim=True)
+        y = torch.mm(x, w.unsqueeze(dim=1))
         y_si = torch.sign(y.detach())
         y = safelog(torch.abs(y)) + m_x
         return y, y_si
 
     def _latent_conds(self, x: torch.Tensor, x_si: torch.Tensor, square: bool = False) -> Tuple[torch.Tensor, torch.Tensor]:
+        w = self.latent_conds
+        if self.l2norm:
+            w = w / torch.linalg.vector_norm(w, ord=2, dim=1, keepdim=True)
+
         if square:
             # x: (batch_size, hidden_size, hidden_size)
             # self.latent_conds: (hidden_size, hidden_size)
             m_x, _ = torch.max(x, dim=2, keepdim=True)  # (batch_size, hidden_size, 1)
             x = x_si * torch.exp(x - m_x)
-            x = torch.einsum('pi,bji->bpj', self.latent_conds, x)
+            x = torch.einsum('pi,bji->bpj', w, x)
             x_si = torch.sign(x.detach())
             x = m_x.permute(0, 2, 1) + safelog(torch.abs(x))  # (batch_size, hidden_size, hidden_size)
             m_x, _ = torch.max(x, dim=2, keepdim=True)  # (batch_size, hidden_size, 1)
             x = x_si * torch.exp(x - m_x)
-            x = torch.einsum('qj,bpj->bpq', self.latent_conds, x)
+            x = torch.einsum('qj,bpj->bpq', w, x)
             x_si = torch.sign(x.detach())
             x = m_x + safelog(torch.abs(x))  # (batch_size, hidden_size, hidden_size)
             return x, x_si
@@ -161,21 +172,29 @@ class BornHMM(PC, abc.ABC):
         # self.latent_conds: (hidden_size, hidden_size)
         m_x, _ = torch.max(x, dim=1, keepdim=True)
         x = x_si * torch.exp(x - m_x)
-        y = torch.einsum('ij,bj->bi', self.latent_conds, x)
+        y = torch.einsum('ij,bj->bi', w, x)
         y_si = torch.sign(y.detach())
         y = safelog(torch.abs(y)) + m_x
         return y, y_si
 
     def _emission_conds(self, x: torch.Tensor, i: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        e = self.emission_conds
+        if self.l2norm:
+            e = e / torch.linalg.vector_norm(e, ord=2, dim=0, keepdim=True)
+
         zi = torch.arange(self.hidden_size, device=x.device).unsqueeze(dim=0)
-        w = self.emission_conds[zi, x[:, i].unsqueeze(dim=-1)]
+        w = e[zi, x[:, i].unsqueeze(dim=-1)]
         w_si = torch.sign(w.detach())
         w = safelog(torch.abs(w))
         return w, w_si
 
     def _emission_conds_normalize(self) -> Tuple[torch.Tensor, torch.Tensor]:
-        w_si = torch.sign(self.emission_conds.detach())
-        w = safelog(torch.abs(self.emission_conds))
+        e = self.emission_conds
+        if self.l2norm:
+            e = e / torch.linalg.vector_norm(e, ord=2, dim=0, keepdim=True)
+
+        w_si = torch.sign(e.detach())
+        w = safelog(torch.abs(e))
         m_w, _ = torch.max(w, dim=1, keepdim=True)
         e_w = w_si * torch.exp(w - m_w)
         z = torch.mm(e_w, e_w.T)
