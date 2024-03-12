@@ -23,13 +23,13 @@ parser.add_argument('--title', default=False, action='store_true', help="Whether
 
 
 def ring_kde() -> np.ndarray:
-    splits = load_artificial_dataset('ring', num_samples=50000, dtype=np.dtype(np.float64))
+    splits = load_artificial_dataset('ring', num_samples=500, dtype=np.dtype(np.float64))
     data = np.concatenate(splits, axis=0)
     scaler = StandardScaler()
     data = scaler.fit_transform(data)
     data_min, data_max = np.min(data, axis=0), np.max(data, axis=0)
-    drange = np.abs(data_max - data_min)
-    data_min, data_max = (data_min - drange * 0.05), (data_max + drange * 0.05)
+    #drange = np.abs(data_max - data_min)
+    #data_min, data_max = (data_min - drange * 0.05), (data_max + drange * 0.05)
     xlim, ylim = [(data_min[i], data_max[i]) for i in range(len(data_min))]
     return kde_samples_hmap(data, xlim=xlim, ylim=ylim, bandwidth=0.16)
 
@@ -52,7 +52,7 @@ def load_mixture(
     metadata, _ = setup_data_loaders('ring', 'datasets', 1, num_samples=10000)
     model: TensorizedPC = setup_model(model_name, metadata, num_components=num_components)
     exp_id = exp_id_fmt.format(num_components, learning_rate, batch_size)
-    filepath = os.path.join(args.checkpoint_path, 'gaussian-ring', 'ring', model_name, exp_id, 'model.pt')
+    filepath = os.path.join(args.checkpoint_path, 'ring', model_name, exp_id, 'model.pt')
     state_dict = torch.load(filepath, map_location='cpu')
     model.load_state_dict(state_dict['weights'])
     return model
@@ -66,7 +66,7 @@ def load_pdf(
         batch_size: int = 64
 ) -> np.ndarray:
     exp_id = exp_id_fmt.format(num_components, learning_rate, batch_size)
-    filepath = os.path.join(args.checkpoint_path, 'gaussian-ring', 'ring', model, exp_id, 'pdf.npy')
+    filepath = os.path.join(args.checkpoint_path, 'ring', model, exp_id, 'distbest.npy')
     return np.load(filepath)
 
 
@@ -155,41 +155,43 @@ if __name__ == '__main__':
     models = [
         'MonotonicPC',
         'MonotonicPC',
-        'BornPC',
-        'MAF',
-        'NSF'
+        'BornPC'
     ]
 
-    num_components = [2, 16, 2, 128, 128]
-    learning_rates = [5e-3, 5e-3, 4e-3, 1e-3, 1e-3]
+    num_components = [2, 16, 2]
+    learning_rates = [5e-3, 5e-3, 1e-3]
 
     exp_id_formats = [
         'RGran_R1_K{}_D1_Lcp_OAdam_LR{}_BS{}_IU',
         'RGran_R1_K{}_D1_Lcp_OAdam_LR{}_BS{}_IU',
-        'RGran_R1_K{}_D1_Lcp_OAdam_LR{}_BS{}_IN',
-        'K{}_OAdam_LR{}_BS{}',
-        'K{}_OAdam_LR{}_BS{}'
+        'RGran_R1_K{}_D1_Lcp_OAdam_LR{}_BS{}_IN'
     ]
+
+    truth_pdf = ring_kde()
 
     mixtures = [
         load_mixture(m, eif, nc, lr)
-        for m, eif, nc, lr in zip(models[:3], exp_id_formats, num_components, learning_rates)
-    ] + [None, None]
+        for m, eif, nc, lr in zip(models, exp_id_formats, num_components, learning_rates)
+    ]
 
     pdfs = [
         load_pdf(m, eif, nc, lr)
         for m, eif, nc, lr in zip(models, exp_id_formats, num_components, learning_rates)
     ]
-    vmax = np.max(pdfs)
+    vmax = np.max([truth_pdf] + pdfs)
     vmin = 0.0
 
     metadata, _ = setup_data_loaders('ring', 'datasets', 1, num_samples=10000)
 
     os.makedirs(os.path.join('figures', 'gaussian-ring'), exist_ok=True)
-    for idx, (p, pdf, m, nc) in enumerate(zip(mixtures, pdfs, models, num_components)):
+    data_pdfs = [(None, truth_pdf, 'Ground Truth', -1)] + list(zip(mixtures, pdfs, models, num_components))
+    for idx, (p, pdf, m, nc) in enumerate(data_pdfs):
         setup_tueplots(1, 1, rel_width=0.2, hw_ratio=1.0)
         fig, ax = plt.subplots(1, 1)
-        title = f"{format_model_name(m, nc)}" if args.title else None
+        if args.title:
+            title = f"{format_model_name(m, nc)}" if p is not None else m
+        else:
+            title = None
 
         plot_pdf(pdf, metadata, ax=ax, vmin=vmin, vmax=vmax)
         if p is not None:

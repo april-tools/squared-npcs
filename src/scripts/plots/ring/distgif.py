@@ -18,14 +18,14 @@ parser.add_argument('--duration', type=int, default=100, help="The duration of e
 parser.add_argument('--drop-last-frames', type=int, default=0, help="The number of last frames to drop")
 
 """
-python -m scripts.plots.ring.distgif checkpoints/loss-landscape --drop-last-frames 164
+python -m scripts.plots.ring.distgif checkpoints/gaussian-ring --drop-last-frames 224
 """
 
 
 if __name__ == '__main__':
     def to_rgb(x: np.ndarray, cmap: cm.ScalarMappable, cmap_transform: Callable[[np.ndarray], np.ndarray]) -> np.ndarray:
         #x = x[51:-50, 51:-50]
-        x = (cmap.to_rgba(cmap_transform(x)) * 255.0).astype(np.uint8)[..., :-1]
+        x = (cmap.to_rgba(cmap_transform(x.T)) * 255.0).astype(np.uint8)[..., :-1]
         if x.shape[0] != args.gif_size or x.shape[1] != args.gif_size:
             x = cv2.resize(x, dsize=(args.gif_size, args.gif_size), interpolation=cv2.INTER_CUBIC)
         return x
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     ]
     gt_array = np.load(os.path.join(checkpoint_paths[0], 'gt.npy'))
     gt_array = np.broadcast_to(gt_array, (args.max_num_frames, gt_array.shape[0], gt_array.shape[1]))
-    arrays = map(lambda p: np.load(os.path.join(p, 'distribution.npy')), checkpoint_paths)
+    arrays = map(lambda p: np.load(os.path.join(p, 'diststeps.npy')), checkpoint_paths)
     if args.drop_last_frames > 0:
         arrays = map(lambda a: a[:-args.drop_last_frames], arrays)
     arrays = [gt_array] + list(arrays)

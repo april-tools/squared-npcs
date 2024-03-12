@@ -89,21 +89,19 @@ if __name__ == '__main__':
         if rows_to_keep is not None:
             for r, vs in rows_to_keep.items():
                 model_df = model_df[model_df[r].isin(vs)]
-        model_df.to_csv(f'{model_name}-gpt2commongen-results.csv', index=None)
+        model_df.to_csv(f'gpt2commongen-results-{model_name}.csv', index=None)
         group_model_df = model_df.groupby(by=['init_method', 'learning_rate'])
         should_label = True
         metrics[model_name] = defaultdict(list)
         for j, hparam_df in group_model_df:
             ms, ps = hparam_df[metric].tolist(), hparam_df['num_components'].tolist()
-            if len(np.unique(ms)) < num_points or len(np.unique(ps)) < num_points:
+            if len(np.unique(ps)) < num_points:
                 continue
             ms = np.array(ms, dtype=np.float64)
             ps = np.array(ps, dtype=np.int64)
             sort_indices = np.argsort(ps)
             ps = ps[sort_indices]
             ms = ms[sort_indices]
-            ps = ps[:num_points]
-            ms = ms[:num_points]
             for p, m in zip(ps.tolist(), ms.tolist()):
                 metrics[model_name][p].append(m)
             if not args.median:
@@ -130,7 +128,7 @@ if __name__ == '__main__':
     assert len(model_names) == 2
     model_a, model_b = model_names
     spvalues = defaultdict(lambda: defaultdict(dict))
-    for ts in ['mannwithneyu', 'ttest']:
+    for ts in ['mannwithneyu']:
         for al in ['greater']:
             for k in sorted(metrics[model_a].keys() & metrics[model_b].keys()):
                 lls_a = metrics[model_a][k]
@@ -141,7 +139,7 @@ if __name__ == '__main__':
                     s, p = stats.ttest_ind(lls_b, lls_a, alternative=al)
                 else:
                     assert False, "Should not happen :("
-                spvalues[ts][al][k] = (round(s, 3), round(p, 4))
+                spvalues[ts][al][k] = (round(s, 3), round(p, 7))
     print(spvalues)
 
     #if args.train:

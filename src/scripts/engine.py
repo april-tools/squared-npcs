@@ -189,6 +189,9 @@ class Engine:
                 test_ppl = perplexity(test_avg_ll, self.metadata['num_variables'])
                 self.logger.info(f"[{self.args.dataset}] Epoch {epoch_idx}, Test ppl: {test_ppl:.03f}")
                 self.logger.log_scalar('Test/ppl', test_ppl, step=epoch_idx)
+            if self._log_distribution:
+                self.logger.log_best_distribution(
+                    self.model, self.args.discretize, lim=self.metadata['domains'], device=self._device)
             metrics['best_valid_epoch'] = epoch_idx
             metrics['best_valid_avg_ll'] = valid_avg_ll
             metrics['best_valid_std_ll'] = valid_std_ll
@@ -357,7 +360,7 @@ class Engine:
 
         if self._log_distribution:
             self.logger.save_array(self.metadata['hmap'], 'gt.npy')
-            self.logger.log_distribution(
+            self.logger.log_step_distribution(
                 self.model, self.args.discretize, lim=self.metadata['domains'], device=self._device)
 
         # The train loop
@@ -391,7 +394,7 @@ class Engine:
                         else (max(1, int(2e-1 * self.args.log_frequency)) if epoch_idx == 2
                         else self.args.log_frequency)) == 0:
                     if self._log_distribution:
-                        self.logger.log_distribution(
+                        self.logger.log_step_distribution(
                             self.model, self.args.discretize, lim=self.metadata['domains'], device=self._device)
                 opt_counter += 1
             if diverged:

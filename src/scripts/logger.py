@@ -4,12 +4,13 @@ from typing import Optional, Dict, Any, Union, List, Tuple
 import numpy as np
 import torch
 import wandb
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from PIL import Image as pillow
 
 from graphics.distributions import bivariate_pmf_heatmap, bivariate_pdf_heatmap
-from pcs.models import PC
+from pcs.models import PC, TensorizedPC
 
 
 class Logger:
@@ -33,6 +34,7 @@ class Logger:
                 wandb_kwargs = dict()
             self._setup_wandb(wandb_path, **wandb_kwargs)
 
+        self._best_distribution = None
         self._logged_distributions = list()
         self._logged_wcoords = list()
 
@@ -105,7 +107,21 @@ class Logger:
         if wandb.run:
             wandb.run.summary.update(metric_dict)
 
-    def log_distribution(
+    def log_best_distribution(
+            self,
+            model: PC,
+            discretized: bool,
+            lim: Tuple[Tuple[Union[float, int], Union[float, int]], Tuple[Union[float, int], Union[float, int]]],
+            device: Optional[Union[str, torch.device]] = None
+    ):
+        xlim, ylim = lim
+        if discretized:
+            dist_hmap = bivariate_pmf_heatmap(model, xlim, ylim, device=device)
+        else:
+            dist_hmap = bivariate_pdf_heatmap(model, xlim, ylim, device=device)
+        self._best_distribution = dist_hmap.astype(np.float32, copy=False)
+
+    def log_step_distribution(
             self,
             model: PC,
             discretized: bool,
@@ -121,7 +137,8 @@ class Logger:
 
     def close(self):
         if self._logged_distributions:
-            self.save_array(np.stack(self._logged_distributions, axis=0), 'distribution.npy')
+            self.save_array(self._best_distribution, 'distbest.npy')
+            self.save_array(np.stack(self._logged_distributions, axis=0), 'diststeps.npy')
         if self._logged_wcoords:
             self.save_array(np.stack(self._logged_wcoords, axis=0), 'wcoords.npy')
         if self._tboard_writer is not None:
