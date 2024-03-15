@@ -13,9 +13,13 @@ def setup_tueplots(
         rel_width: float = 1.0,
         hw_ratio: Optional[float] = None,
         inc_font_size: int = 0,
+        use_tex: bool = True,
         **kwargs
 ):
-    font_config = fonts.iclr2023_tex(family='serif')
+    if use_tex:
+        font_config = fonts.iclr2023_tex(family='serif')
+    else:
+        font_config = fonts.iclr2023(family='serif')
     if hw_ratio is not None:
         kwargs['height_to_width_ratio'] = hw_ratio
     size = figsizes.iclr2023(rel_width=rel_width, nrows=nrows, ncols=ncols, **kwargs)

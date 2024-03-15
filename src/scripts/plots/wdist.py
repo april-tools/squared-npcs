@@ -49,22 +49,30 @@ if __name__ == '__main__':
     path = setup_experiment_path(
         args.path, args.dataset, args.model, args.exp_alias, trial_id=build_run_id(args))
     sd = torch.load(os.path.join(path, 'model.pt'), map_location='cpu')['weights']
+    print(sd.keys())
 
     # Concatenate weights in a large vector
     ws = list()
     for k in sd.keys():
-        if 'layer' in k and 'weight' in k:
-            ws.append(sd[k].flatten().numpy())
+        # Select the parameters of CP layers only
+        if 'layer' in k and 'weight' in k and 'input' not in k and 'mixture' not in k:
+            w = sd[k]
+            if 'Born' in args.model:  # Perform squaring
+                if len(w.shape) == 3:  # CP layer
+                    w = torch.einsum('fki,fkj->fkij', w, w)
+                else:
+                    assert False, "This should not happen :("
+            ws.append(w.flatten().numpy())
     ws = np.concatenate(ws, axis=0)
 
     # Preprocess the weights, and set some flags
     if 'Mono' in args.model:
-        mb = np.quantile(ws, q=[0.9999])
+        mb = np.quantile(ws, q=[0.99], method='lower')
         ws = ws[ws <= mb]
         ws = np.exp(ws)
         hcol = 'C0'
     elif 'Born' in args.model:
-        ma, mb = np.quantile(ws, q=[0.0005, 0.9995])
+        ma, mb = np.quantile(ws, q=[0.005, 0.995], method='lower')
         ws = ws[(ws >= ma) & (ws <= mb)]
         hcol = 'C1'
     print(ws.shape)
@@ -72,7 +80,7 @@ if __name__ == '__main__':
     # Compute and plot the instogram
     setup_tueplots(1, 1, rel_width=0.25, hw_ratio=1.0)
     hlabel = f'{format_model(args.model)}'
-    plt.hist(ws, density=True, bins=64, color=hcol, label=hlabel)
+    plt.hist(ws, bins=64, color=hcol, label=hlabel)
     plt.yscale('log')
     if args.legend:
         plt.legend()
