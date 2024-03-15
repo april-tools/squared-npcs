@@ -295,8 +295,9 @@ class Engine:
             # If alternate checkpoint hparams given, replace values in hparams from CL
             checkpoint_args = copy(self.args)
             for hp in self.args.checkpoint_hparams.split(';'):
-                hp_name, hp_value = hp.split('=')
-                checkpoint_args.__setattr__(hp_name.replace('-', '_'), hp_value)
+                if hp:
+                    hp_name, hp_value = hp.split('=')
+                    checkpoint_args.__setattr__(hp_name.replace('-', '_'), hp_value)
 
             checkpoint_run_id = build_run_id(checkpoint_args)
             checkpoint_exp_path = setup_experiment_path(
