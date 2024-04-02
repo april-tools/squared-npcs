@@ -7,10 +7,7 @@ import numpy as np
 from scipy import special
 import torch
 from matplotlib import pyplot as plt
-from sklearn.preprocessing import StandardScaler
 
-from datasets.loaders import load_artificial_dataset
-from graphics.distributions import kde_samples_hmap
 from graphics.utils import setup_tueplots
 from pcs.models import TensorizedPC, PC, MonotonicPC
 from scripts.utils import setup_model, setup_data_loaders
@@ -18,7 +15,7 @@ from scripts.utils import setup_model, setup_data_loaders
 parser = argparse.ArgumentParser(
     description="PDFs and ellipses plotter"
 )
-parser.add_argument('--checkpoint-path', default='checkpoints', type=str, help="The checkpoints path")
+parser.add_argument('path', default='checkpoints', type=str, help="The checkpoints path")
 parser.add_argument('--show-ellipses', default=False, action='store_true',
                     help="Whether to show the Gaussian components as ellipses")
 parser.add_argument('--title', default=False, action='store_true', help="Whether to show a title")
@@ -42,7 +39,7 @@ def load_mixture(
     metadata, _ = setup_data_loaders('ring', 'datasets', 1)
     model: TensorizedPC = setup_model(model_name, metadata, num_components=num_components)
     exp_id = exp_id_fmt.format(num_components, learning_rate, batch_size)
-    filepath = os.path.join(args.checkpoint_path, 'ring', model_name, exp_id, 'model.pt')
+    filepath = os.path.join(args.path, 'ring', model_name, exp_id, 'model.pt')
     state_dict = torch.load(filepath, map_location='cpu')
     model.load_state_dict(state_dict['weights'])
     return model
@@ -56,7 +53,7 @@ def load_pdf(
         batch_size: int = 64
 ) -> np.ndarray:
     exp_id = exp_id_fmt.format(num_components, learning_rate, batch_size)
-    filepath = os.path.join(args.checkpoint_path, 'ring', model, exp_id, 'distbest.npy')
+    filepath = os.path.join(args.path, 'ring', model, exp_id, 'distbest.npy')
     return np.load(filepath)
 
 
@@ -110,7 +107,7 @@ def plot_pdf(
         Optional[float] = None,
         vmax: Optional[float] = None
 ):
-    pdf = pdf[8:-8, 8:-8]
+    #pdf = pdf[8:-8, 8:-8]
 
     x_lim = metadata['domains'][0]
     y_lim = metadata['domains'][1]
@@ -147,7 +144,7 @@ if __name__ == '__main__':
     ]
 
     truth_pdf = np.load(
-        os.path.join(args.checkpoint_path, 'ring', models[0],
+        os.path.join(args.path, 'ring', models[0],
                      exp_id_formats[0].format(num_components[0], learning_rates[0], 64), 'gt.npy')
     )
     # truth_pdf = ring_kde()
@@ -192,7 +189,8 @@ if __name__ == '__main__':
         ax.set_yticks([])
         ax.set_aspect(1.0)
         if args.title:
-            ax.set_title(title, rotation='vertical', x=-0.1, y=0.41, va='center')
+            #ax.set_title(title, rotation='vertical', x=-0.1, y=0.41, va='center')
+            ax.set_title(title, y=-0.275)
 
         filename = f'pdfs-ellipses-{idx}.png' if args.show_ellipses else f'pdfs-{idx}.png'
         plt.savefig(os.path.join('figures', 'gaussian-ring', filename), dpi=1200)
