@@ -1,7 +1,7 @@
 # Subtractive Mixture Models via Squaring: Representation and Learning
 
 This repository contains the code for reproducing the experiments of the paper
-[_"Subtractive Mixture Models via Squaring: Representation and Learning"_](https://openreview.net/forum?id=xIHi5nxu9P), which has been accepted at ICLR 2024.
+[_"Subtractive Mixture Models via Squaring: Representation and Learning"_](https://openreview.net/forum?id=xIHi5nxu9P), which has been accepted at ICLR 2024 as a spotlight (top 5%).
 
 We show how to effectively represent and learn a generic class of (deep) mixture models encoding subtractions of
 probability distributions, called _squared non-monotonic PCs_ (NPC<sup>2</sup>s), and theoretically prove they can be
