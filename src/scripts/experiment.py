@@ -23,7 +23,7 @@ parser.add_argument('--data-path', default='datasets', type=str, help="The data 
 parser.add_argument('--tboard-path', default='', type=str, help="The Tensorboard path, empty to disable")
 parser.add_argument('--log-distribution', action='store_true', default=False,
                     help="Whether to log the learned distribution")
-parser.add_argument('--log-frequency', default=100,
+parser.add_argument('--log-frequency', default=100, type=int,
                     help="The frequency for logging distributions")
 parser.add_argument('--wandb-path', default='', type=str, help="The W&B path, empty to disable")
 parser.add_argument('--wandb-project', default='born-pcs', type=str, help="The W&B project")
