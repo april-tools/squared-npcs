@@ -42,7 +42,7 @@ def format_model_name(m: str, num_components: int, alt: bool = False) -> str:
             if num_components == 1:
                 return r"$\mathcal{N}_1$"
             elif num_components == 2:
-                return r"$\mathcal{N}_1 - w_2\mathcal{N}_2$"
+                return r"$( \mathcal{N}_1 - w_2\mathcal{N}_2 )^2$"
             assert False
     else:
         if m == 'MonotonicPC':
