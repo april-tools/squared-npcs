@@ -41,6 +41,51 @@ parser.add_argument('--filename', type=str, required=True,
 parser.add_argument('--legend', action='store_true', default=False)
 
 
+"""
+python -m scripts.plots.wdist checkpoints/uci-data-weights --dataset power --model MonotonicPC \
+    --region-graph random --num-replicas 8 --depth -1 --num-components 512 --splines --spline-order 2 \
+    --spline-knots 512 --learning-rate 0.01 --batch-size 512 --init-method uniform --filename mono-power.pdf --legend
+python -m scripts.plots.wdist checkpoints/uci-data-weights --dataset power --model BornPC --region-graph random \
+    --num-replicas 8 --depth -1 --num-components 512 --splines --spline-order 2 --spline-knots 512 \
+    --learning-rate 0.01 --batch-size 512 --init-method uniform --exp-alias non-monotonic \
+    --filename squared-power.pdf --legend
+python -m scripts.plots.wdist checkpoints/uci-data-weights --dataset gas --model MonotonicPC \
+    --region-graph random --num-replicas 8 --depth -1 --num-components 512 --splines --spline-order 2 \
+    --spline-knots 512 --learning-rate 0.01 --batch-size 512 --init-method uniform --filename mono-gas.pdf --legend
+python -m scripts.plots.wdist checkpoints/uci-data-weights --dataset gas --model BornPC --region-graph random \
+    --num-replicas 8 --depth -1 --num-components 512 --splines --spline-order 2 --spline-knots 512 \
+    --learning-rate 0.01 --batch-size 512 --init-method uniform --exp-alias non-monotonic \
+    --filename squared-gas.pdf --legend
+python -m scripts.plots.wdist checkpoints/uci-data-weights --dataset hepmass --model MonotonicPC \
+    --region-graph random --num-replicas 8 --depth -1 --num-components 128 --splines --spline-order 2 \
+    --spline-knots 512 --learning-rate 0.01 --batch-size 512 --init-method uniform --filename mono-hepmass.pdf --legend
+python -m scripts.plots.wdist checkpoints/uci-data-weights --dataset hepmass --model BornPC --region-graph random \
+    --num-replicas 8 --depth -1 --num-components 128 --splines --spline-order 2 --spline-knots 512 \
+    --learning-rate 0.01 --batch-size 512 --init-method uniform --exp-alias non-monotonic \
+    --filename squared-hepmass.pdf --legend
+python -m scripts.plots.wdist checkpoints/uci-data-weights --dataset miniboone --model MonotonicPC --region-graph random \
+    --num-replicas 8 --depth -1 --num-components 128 --splines --spline-order 2 --spline-knots 512 \
+    --learning-rate 0.01 --batch-size 512 --init-method uniform --filename mono-miniboone.pdf --legend
+python -m scripts.plots.wdist checkpoints/uci-data-weights --dataset miniboone --model BornPC --region-graph random \
+    --num-replicas 8 --depth -1 --num-components 128 --splines --spline-order 2 --spline-knots 512 \
+    --learning-rate 0.01 --batch-size 512 --init-method uniform --exp-alias non-monotonic \
+    --filename squared-miniboone.pdf --legend
+python -m scripts.plots.wdist checkpoints/uci-data-weights --dataset bsds300 --model MonotonicPC --region-graph random \
+    --num-replicas 8 --depth -1 --num-components 64 --splines --spline-order 2 --spline-knots 512 \
+    --learning-rate 0.01 --batch-size 512 --init-method uniform --filename mono-bsds300.pdf --legend
+python -m scripts.plots.wdist checkpoints/uci-data-weights --dataset bsds300 --model BornPC --region-graph random \
+    --num-replicas 8 --depth -1 --num-components 64 --splines --spline-order 2 --spline-knots 512 \
+    --learning-rate 0.01 --batch-size 512 --init-method uniform --exp-alias non-monotonic \
+    --filename squared-bsds300.pdf --legend
+python -m scripts.plots.wdist checkpoints/gpt2-commongen-ihmm-weights --dataset gpt2_commongen --model MonotonicPC \
+    --region-graph linear-vtree --num-components 128 --learning-rate 0.01 --batch-size 4096 --init-method uniform \
+    --filename mono-gpt2.pdf --legend
+python -m scripts.plots.wdist checkpoints/gpt2-commongen-ihmm-weights --dataset gpt2_commongen --model BornPC \
+    --region-graph linear-vtree --num-components 128 --learning-rate 0.01 --batch-size 4096 --init-method uniform \
+    --filename squared-gpt2.pdf --legend
+"""
+
+
 if __name__ == '__main__':
     torch.set_grad_enabled(False)
 

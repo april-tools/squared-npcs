@@ -74,7 +74,7 @@ if __name__ == '__main__':
                 (int(0.5 * (x[1].shape[2] - cv2.getTextSize(x[0], font, fontscale, thickness)[0][0])),
                     int(0.5 * (caption_height + cv2.getTextSize(x[0], font, fontscale, thickness)[0][1]))),
                 font, fontscale, (16, 16, 16), thickness, cv2.LINE_AA), reps=(num_frames, 1, 1, 1))
-        ], axis=1), zip(['Ground Truth'] + ['GMM (K=2)', 'GMM (K=16)', 'NGMM (K=2)'], arrays)
+        ], axis=1), zip(['Ground Truth'] + ['GMM (K=2)', 'GMM (K=16)', 'Squared SGMM'], arrays)
     )
     gif_images = np.concatenate(list(arrays), axis=2)
 
