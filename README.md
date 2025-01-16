@@ -7,6 +7,14 @@ We show how to effectively represent and learn a generic class of (deep) mixture
 probability distributions, called _squared non-monotonic PCs_ (NPC<sup>2</sup>s), and theoretically prove they can be
 exponentially more expressive than addition-only mixture models.
 
+> [!WARNING]
+> The implementation of squared non-monotonic PCs in this repository is deprecated in favour
+> of the more general and efficient [implementation of Sum of Squares (SOS) circuits](https://github.com/april-tools/sos-npcs),
+> originally introduced in the paper [_"Sum of Squares Circuits"_](https://arxiv.org/abs/2408.11778).
+> The main difference with respect to this implementation is that the SOS circuits implementation is based on
+> [_cirkit_](https://github.com/april-tools/cirkit),
+> a general-purpose circuit framework to build, learn and reason about probabilistic models that is based on PyTorch.
+
 ## Project Structure
 
 The repository is structured as follows.
